@@ -10,6 +10,7 @@ import MyInventory from './pages/MyInventory'
 import Orders from './pages/Orders'
 import OrderDetail from './pages/OrderDetail'
 import CreateOrder from './pages/CreateOrder'
+import LineCallback from './pages/LineCallback'
 import { useAuthStore } from './store/authStore'
 
 const queryClient = new QueryClient()
@@ -25,6 +26,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/auth/line/callback" element={<LineCallback />} />
           <Route path="/register" element={<Register />} />
           <Route
             path="/"

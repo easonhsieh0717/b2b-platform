@@ -11,12 +11,17 @@
     "generate": "prisma generate",
     "studio": "prisma studio"
   },
-  "keywords": ["b2b", "ecommerce", "lalamove"],
+  "keywords": [
+    "b2b",
+    "ecommerce",
+    "lalamove"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@line/bot-sdk": "^9.3.0",
     "@prisma/client": "^5.7.1",
+    "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -26,7 +31,6 @@
     "multer": "^1.4.5-lts.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "passport-line": "^0.1.1",
     "winston": "^3.11.0",
     "zod": "^3.22.4"
   },

@@ -1,11 +1,165 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
+import * as crypto from 'crypto';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// LINE 登入（模擬）
+// LINE Login OAuth 配置
+const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID;
+const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET;
+const LINE_CALLBACK_URL = process.env.LINE_CALLBACK_URL || 'http://localhost:5173/auth/line/callback';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+// LINE Login OAuth - 跳轉到 LINE 授權頁面
+router.get('/line/authorize', (req, res) => {
+  if (!LINE_CHANNEL_ID) {
+    return res.status(500).json({
+      success: false,
+      error: 'LINE_CHANNEL_ID 未設置，請在 .env 中配置',
+    });
+  }
+
+  // 生成 state 用於防止 CSRF 攻擊
+  const state = crypto.randomBytes(32).toString('hex');
+  
+  // 儲存 state 到 session 或 cookie（這裡簡化處理，實際應該用 session）
+  res.cookie('line_oauth_state', state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 600000, // 10 分鐘
+  });
+
+  // 構建 LINE 授權 URL
+  const authUrl = new URL('https://access.line.me/oauth2/v2.1/authorize');
+  authUrl.searchParams.append('response_type', 'code');
+  authUrl.searchParams.append('client_id', LINE_CHANNEL_ID);
+  authUrl.searchParams.append('redirect_uri', LINE_CALLBACK_URL);
+  authUrl.searchParams.append('state', state);
+  authUrl.searchParams.append('scope', 'profile openid email');
+  authUrl.searchParams.append('bot_prompt', 'normal');
+
+  // 跳轉到 LINE 授權頁面
+  res.redirect(authUrl.toString());
+});
+
+// LINE Login OAuth Callback - 處理 LINE 回調
+router.post('/line/callback', async (req, res, next) => {
+  try {
+    const { code, state } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        error: '缺少授權碼',
+      });
+    }
+
+    if (!LINE_CHANNEL_ID || !LINE_CHANNEL_SECRET) {
+      return res.status(500).json({
+        success: false,
+        error: 'LINE 配置未完成，請檢查環境變數',
+      });
+    }
+
+    // 用 code 換取 access token
+    const tokenResponse = await axios.post(
+      'https://api.line.me/oauth2/v2.1/token',
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: LINE_CALLBACK_URL,
+        client_id: LINE_CHANNEL_ID,
+        client_secret: LINE_CHANNEL_SECRET,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
+
+    const { access_token, id_token } = tokenResponse.data;
+
+    // 驗證並取得用戶資訊
+    const profileResponse = await axios.get('https://api.line.me/v2/profile', {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    });
+
+    const lineProfile = profileResponse.data;
+    const lineId = lineProfile.userId;
+    const name = lineProfile.displayName;
+    const picture = lineProfile.pictureUrl;
+    const email = lineProfile.email || null;
+
+    // 查找或建立使用者
+    let user = await prisma.user.findFirst({
+      where: { line_id: lineId, provider: 'line' },
+      include: { company: true, branch: true },
+    });
+
+    if (!user) {
+      // 首次登入，需要綁定統編
+      return res.json({
+        success: true,
+        requiresRegistration: true,
+        line_id: lineId,
+        name,
+        email,
+        picture,
+      });
+    }
+
+    // 更新最後登入時間和頭像
+    await prisma.user.update({
+      where: { uid: user.uid },
+      data: {
+        last_login: new Date(),
+        name: name || user.name, // 更新名稱
+      },
+    });
+
+    // 重新查詢以獲取最新資料
+    user = await prisma.user.findUnique({
+      where: { uid: user.uid },
+      include: { company: true, branch: true },
+    });
+
+    // 生成 JWT
+    const token = jwt.sign(
+      {
+        uid: user!.uid,
+        company_tax_id: user!.company_tax_id,
+        branch_code: user!.branch_code,
+        roles: user!.roles,
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        uid: user!.uid,
+        name: user!.name,
+        email: user!.email,
+        company: user!.company,
+        branch: user!.branch,
+        roles: user!.roles,
+      },
+    });
+  } catch (error: any) {
+    console.error('LINE callback error:', error.response?.data || error.message);
+    next(error);
+  }
+});
+
+// LINE 登入（模擬 - 保留用於測試）
 router.post('/line', async (req, res, next) => {
   try {
     const { line_id, name, email } = req.body;
