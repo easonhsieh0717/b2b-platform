@@ -255,6 +255,37 @@
 
 ## 18. 版本控制（Github）
 
+### 18.1 倉庫設置
+- 主分支：`main` 或 `master`
+- 開發分支：`develop`
+- 功能分支：`feature/*`
+- 修復分支：`fix/*`
+- 發布分支：`release/*`
+
+### 18.2 提交規範
+使用 [Conventional Commits](https://www.conventionalcommits.org/) 規範：
+- `feat`: 新功能
+- `fix`: 修復問題
+- `docs`: 文件更新
+- `style`: 程式碼格式調整
+- `refactor`: 重構
+- `test`: 測試相關
+- `chore`: 建置/工具相關
+- `perf`: 效能優化
+- `ci`: CI/CD 相關
+
+### 18.3 分支策略
+1. 從 `develop` 建立功能分支
+2. 開發完成後建立 Pull Request
+3. Code Review 通過後合併到 `develop`
+4. 發布時從 `develop` 合併到 `main`
+
+### 18.4 版本標籤
+- 使用語義化版本號：`v1.0.0`
+- 主要版本：重大變更
+- 次要版本：新功能
+- 修補版本：錯誤修復
+
 ---
 
 ## 19. 授權與版權
