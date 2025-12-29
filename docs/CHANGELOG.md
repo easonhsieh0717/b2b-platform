@@ -13,3 +13,10 @@
 - 建立產品規格文件 (B2B_SPEC.md)
 - 建立 README.md 專案說明文件
 - 建立 .gitignore 文件
+- 連接 GitHub 遠端倉庫 (https://github.com/easonhsieh0717/b2b-platform)
+- 建立 GitHub 設置指南和倉庫建立步驟說明
+- 更新版本控制文檔（提交規範、分支策略）
+
+### 變更
+- 將 B2B_SPEC.md 移動到 docs/ 目錄
+- 更新 B2B_SPEC.md 中的版本控制章節，補充詳細說明
