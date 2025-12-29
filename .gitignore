@@ -1,0 +1,69 @@
+# 依賴
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# 環境變數
+.env
+.env.local
+.env.*.local
+*.env
+
+# 日誌
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 作業系統
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 建置輸出
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# 測試
+coverage/
+.nyc_output/
+*.coverage
+
+# 資料庫
+*.db
+*.sqlite
+*.sqlite3
+
+# 暫存檔案
+tmp/
+temp/
+*.tmp
+
+# 敏感資訊
+secrets/
+*.pem
+*.key
+*.cert
+
+# 上傳檔案（開發環境）
+uploads/
+storage/
+
+# 快取
+.cache/
+.parcel-cache/
