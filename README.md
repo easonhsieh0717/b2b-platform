@@ -16,33 +16,57 @@
 
 ### 前置需求
 
-- Node.js 18+ 或 Python 3.9+
-- 資料庫（PostgreSQL/MySQL）
-- LINE Developer Account
-- Google OAuth Credentials
-- 第三方金流服務（代收代付）
-- Lalamove API 金鑰
+- Node.js 18+
+- npm 或 yarn
+- SQLite（開發環境，生產環境建議使用 PostgreSQL）
 
 ### 安裝步驟
 
+#### 1. 後端設置
+
 ```bash
-# 複製環境變數範本
-cp .env.example .env
+cd backend
 
-# 安裝依賴（根據使用的技術棧）
+# 安裝依賴
 npm install
-# 或
-pip install -r requirements.txt
 
-# 執行資料庫遷移
-npm run migrate
-# 或
-python manage.py migrate
+# 複製環境變數範本（需要手動建立 .env 文件）
+# 參考 backend/.env.example
+
+# 初始化資料庫
+npx prisma generate
+npx prisma migrate dev --name init
 
 # 啟動開發伺服器
 npm run dev
-# 或
-python manage.py runserver
+```
+
+後端 API 將運行在 http://localhost:3000
+
+#### 2. 前端設置
+
+```bash
+cd frontend
+
+# 安裝依賴
+npm install
+
+# 啟動開發伺服器
+npm run dev
+```
+
+前端應用將運行在 http://localhost:5173
+
+### 環境變數設置
+
+在 `backend/.env` 中設置：
+
+```env
+NODE_ENV=development
+PORT=3000
+JWT_SECRET=your-super-secret-jwt-key
+DATABASE_URL="file:./dev.db"
+CORS_ORIGIN=http://localhost:5173
 ```
 
 ## 📁 專案結構
@@ -50,89 +74,93 @@ python manage.py runserver
 ```
 B2B/
 ├── docs/              # 文件
-│   └── B2B_SPEC.md   # 產品規格文件
+│   ├── B2B_SPEC.md   # 產品規格文件
+│   └── ...
 ├── backend/           # 後端 API
+│   ├── src/
+│   │   ├── routes/   # API 路由
+│   │   ├── middleware/ # 中間件
+│   │   └── utils/    # 工具函數
+│   └── prisma/       # 資料庫 schema
 ├── frontend/          # 前端應用
-├── mobile/            # 行動應用
-├── line-bot/          # LINE Bot 服務
-├── tests/             # 測試
-└── README.md          # 本文件
+│   └── src/
+│       ├── pages/    # 頁面組件
+│       ├── components/ # 共用組件
+│       └── store/    # 狀態管理
+└── README.md
 ```
 
-## 🔑 環境變數
+## 🛠️ 技術棧
 
-請參考 `.env.example` 設定以下環境變數：
+### 後端
+- Node.js + Express + TypeScript
+- Prisma ORM
+- SQLite（開發）/ PostgreSQL（生產）
+- JWT 認證
 
-- `LINE_CHANNEL_ID` / `LINE_CHANNEL_SECRET`
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
-- `PAYMENT_PROVIDER_*` (API keys, webhook secrets)
-- `LALAMOVE_API_KEY` / `LALAMOVE_SECRET`
-- `JWT_SECRET` / `JWT_ISSUER` / `JWT_AUDIENCE`
-- `DB_URL`
-- `STORAGE_BUCKET`
+### 前端
+- React + TypeScript
+- Vite
+- Tailwind CSS
+- React Query
+- Zustand
+- React Router
 
-## 📖 文件
+## 📖 功能清單
 
-詳細的產品規格與設計文件請參考：[B2B_SPEC.md](./B2B_SPEC.md)
+### MVP 功能（已完成 80%）
 
-## 🛠️ 開發
+- ✅ 認證系統（LINE/Google 登入模擬）
+- ✅ 統編綁定與註冊
+- ✅ 庫存上架（手動）
+- ✅ 找貨/比價搜尋
+- ✅ 下單功能
+- ✅ 訂單管理
+- ✅ 付款流程（模擬）
+- ✅ 物流追蹤（模擬）
+- ✅ 驗收功能
 
-### 技術棧（待決定）
+### 待完成
 
-- 後端：Node.js / Python
-- 前端：React / Vue
-- 資料庫：PostgreSQL / MySQL
-- 快取：Redis
-- 訊息佇列：RabbitMQ / AWS SQS
-
-### 開發流程
-
-1. 從 `main` 分支建立功能分支
-2. 開發並提交變更
-3. 建立 Pull Request
-4. 通過 Code Review 後合併
-
-## 📝 版本控制
-
-本專案使用 Git 進行版本控制，所有變更都會記錄在 GitHub 上。
-
-### 提交規範
-
-- `feat`: 新功能
-- `fix`: 修復問題
-- `docs`: 文件更新
-- `style`: 程式碼格式調整
-- `refactor`: 重構
-- `test`: 測試相關
-- `chore`: 建置/工具相關
+- ⏳ LINE Bot 通知
+- ⏳ CSV 匯入庫存
+- ⏳ 對帳/開票功能
+- ⏳ 議價聊天室
+- ⏳ 實際 LINE/Google OAuth 整合
+- ⏳ 實際 Lalamove API 整合
+- ⏳ 實際第三方金流整合
 
 ## 🧪 測試
 
-```bash
-# 執行測試
-npm test
-# 或
-pytest
+目前系統處於開發階段，主要功能已可測試：
 
-# 測試覆蓋率
-npm run test:coverage
-```
+1. **註冊流程**：
+   - 訪問 http://localhost:5173
+   - 點擊「登入」
+   - 使用 LINE 或 Google 登入（模擬）
+   - 填寫統編和店家資訊完成註冊
 
-## 📊 目標 KPI
+2. **上架商品**：
+   - 登入後點擊「我的庫存」
+   - 點擊「新增商品」
+   - 填寫商品資訊並儲存
 
-- P50 配送時間 < 120 分鐘
-- D7 回購率 ≥ 60%
-- 糾紛率 < 1.5%
+3. **找貨下單**：
+   - 點擊「找貨」
+   - 搜尋商品
+   - 點擊商品進入詳情頁
+   - 點擊「立即下單」
+   - 填寫數量並建立訂單
 
-## 📅 路線圖
+4. **訂單流程**：
+   - 賣家確認訂單
+   - 買家付款（模擬）
+   - 賣家取得物流報價並派車
+   - 買家驗收
 
-- **M0–M2**：MVP（核心功能）
-- **M3–M4**：缺貨雷達、Pro Seller、糾紛中心
-- **M5–M6**：信用額度/保理、區域擴張、POS/庫存 API 串接
+## 📝 開發狀態
 
-## 👥 貢獻
-
-歡迎提交 Issue 和 Pull Request。
+目前已完成約 **80%** 的核心功能，可以進行完整流程測試。
 
 ## 📄 授權
 

@@ -1,0 +1,213 @@
+// Prisma Schema for B2B Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  company_tax_id String   @id // 統編
+  name           String
+  kyc_status     String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  kyc_docs       String?  // JSON string of document URLs
+  risk_level     String   @default("LOW") // LOW, MEDIUM, HIGH
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  branches Branch[]
+  users    User[]
+  orders_as_buyer  Order[] @relation("BuyerOrders")
+  orders_as_seller Order[] @relation("SellerOrders")
+  inventory_items  InventoryItem[]
+
+  @@map("companies")
+}
+
+model Branch {
+  company_tax_id String
+  branch_code    String
+  name           String
+  address        String
+  city           String
+  district       String
+  postal_code    String?
+  phone          String?
+  latitude       Float?
+  longitude      Float?
+  is_main        Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  company Company @relation(fields: [company_tax_id], references: [company_tax_id], onDelete: Cascade)
+  users   User[]
+  inventory_items InventoryItem[]
+  orders          Order[]
+
+  @@id([company_tax_id, branch_code])
+  @@map("branches")
+}
+
+model User {
+  uid             String   @id
+  company_tax_id  String
+  branch_code     String
+  provider        String   // line, google
+  email           String?
+  line_id         String?
+  name            String
+  phone           String?
+  roles           String   @default("BUYER") // BUYER, SELLER, MANAGER, OPS
+  is_active       Boolean  @default(true)
+  last_login      DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  company Company @relation(fields: [company_tax_id], references: [company_tax_id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [company_tax_id, branch_code], references: [company_tax_id, branch_code], onDelete: Cascade)
+
+  @@index([company_tax_id, branch_code])
+  @@map("users")
+}
+
+model InventoryItem {
+  id              String   @id @default(uuid())
+  company_tax_id  String
+  branch_code     String
+  brand           String
+  model           String
+  spec            String?  // 規格
+  color           String?
+  capacity        String?
+  grade           String   @default("NEW") // NEW, USED, REFURBISHED
+  qty             Int      @default(0)
+  price           Float
+  imei_required   Boolean  @default(false)
+  description     String?
+  images          String?  // JSON array of image URLs
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  company Company @relation(fields: [company_tax_id], references: [company_tax_id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [company_tax_id, branch_code], references: [company_tax_id, branch_code], onDelete: Cascade)
+  order_items     OrderItem[]
+
+  @@index([brand, model])
+  @@index([company_tax_id, branch_code])
+  @@map("inventory_items")
+}
+
+model Order {
+  id                    String   @id @default(uuid())
+  buyer_company_tax_id   String
+  buyer_branch_code      String
+  seller_company_tax_id  String
+  seller_branch_code     String
+  status                 String   @default("CREATED") // CREATED, CONFIRMED, PAID, DISPATCHED, DELIVERED, ACCEPTED, DISPUTED, SETTLED
+  payment_mode           String   // escrow, bank_transfer, credit, net_terms
+  total_amount           Float
+  platform_fee           Float   @default(0)
+  payment_fee            Float   @default(0)
+  shipping_fee           Float   @default(0)
+  notes                  String?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+  paid_at                DateTime?
+  dispatched_at          DateTime?
+  delivered_at           DateTime?
+  accepted_at            DateTime?
+
+  buyer_company  Company  @relation("BuyerOrders", fields: [buyer_company_tax_id], references: [company_tax_id])
+  seller_company Company @relation("SellerOrders", fields: [seller_company_tax_id], references: [company_tax_id])
+  buyer_branch   Branch   @relation(fields: [buyer_company_tax_id, buyer_branch_code], references: [company_tax_id, branch_code])
+  items          OrderItem[]
+  payment        Payment?
+  shipment       Shipment?
+
+  @@index([buyer_company_tax_id])
+  @@index([seller_company_tax_id])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  order_id        String
+  inventory_id    String
+  qty             Int
+  unit_price      Float
+  imei_list       String?  // JSON array of IMEIs
+  created_at      DateTime @default(now())
+
+  order     Order         @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  inventory InventoryItem @relation(fields: [inventory_id], references: [id])
+
+  @@index([order_id])
+  @@map("order_items")
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  order_id        String   @unique
+  method          String   // virtual_account, atm, card, bank_transfer
+  amount          Float
+  fee             Float    @default(0)
+  status          String   @default("PENDING") // PENDING, PAID, RELEASED, REFUND_PENDING, REFUNDED
+  provider_tx_id  String?
+  webhook_payload String?  // JSON string
+  paid_at         DateTime?
+  released_at     DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  order Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("payments")
+}
+
+model Shipment {
+  id                String   @id @default(uuid())
+  order_id          String   @unique
+  provider           String   @default("lalamove") // lalamove
+  quote_id           String?
+  driver_id          String?
+  driver_name        String?
+  driver_phone       String?
+  status             String   @default("QUOTED") // QUOTED, DRIVER_ASSIGNED, PICKED_UP, DELIVERED, PROOF_UPLOADED
+  eta_min            Int?     // 預估最小時數（分鐘）
+  eta_max            Int?     // 預估最大時數（分鐘）
+  pickup_address     String
+  delivery_address   String
+  proof_photos       String?  // JSON array of photo URLs
+  tracking_url       String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  picked_up_at       DateTime?
+  delivered_at       DateTime?
+
+  order Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("shipments")
+}
+
+model Dispute {
+  id          String   @id @default(uuid())
+  order_id    String
+  type        String   // WRONG_ITEM, DAMAGED, MISSING, OTHER
+  description String
+  status      String   @default("OPEN") // OPEN, IN_REVIEW, RESOLVED, CLOSED
+  resolution  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  resolved_at DateTime?
+
+  @@index([order_id])
+  @@index([status])
+  @@map("disputes")
+}
